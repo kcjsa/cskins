@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>Skin配布サイト プロトタイプ</title>
+<style>
+  body { font-family: sans-serif; max-width: 600px; margin: auto; padding: 1rem; }
+  img { width: 128px; height: 128px; object-fit: contain; border: 1px solid #ccc; margin-bottom: 4px; }
+  .skin-item { border-bottom: 1px solid #ddd; padding: 8px 0; }
+  label { display: block; margin-top: 1rem; }
+  input[type="text"] { width: 100%; padding: 0.3rem; box-sizing: border-box; }
+  button { margin-top: 1rem; padding: 0.5rem 1rem; }
+</style>
+</head>
+<body>
+
+<h1>Skin配布サイト</h1>
+
+<div id="skins-list">
+  <p>読み込み中...</p>
+</div>
+
+<h2>新しいSkinを投稿</h2>
+<form id="postForm">
+  <label>
+    実際のSkin画像URL (c):  
+    <input type="text" id="inputC" placeholder="https://example.com/skin.png" required />
+  </label>
+  <label>
+    ダウンロード用URL (d):  
+    <input type="text" id="inputD" placeholder="https://example.com/skin_download.png" required />
+  </label>
+  <button type="submit">投稿する</button>
+</form>
+
+<script>
+  const apiUrl = "https://red-poetry-3a04.kojimakcjsa.workers.dev/";
+
+  async function loadSkins() {
+    const container = document.getElementById("skins-list");
+    container.innerHTML = "<p>読み込み中...</p>";
+    try {
+      const res = await fetch(apiUrl);
+      const skins = await res.json();
+
+      if (!skins.length) {
+        container.innerHTML = "<p>登録されたSkinはまだありません。</p>";
+        return;
+      }
+
+      container.innerHTML = "";
+      skins.forEach(skin => {
+        const div = document.createElement("div");
+        div.className = "skin-item";
+
+        const img = document.createElement("img");
+        img.src = skin.c;
+        img.alt = "Skin Image";
+
+        const link = document.createElement("a");
+        link.href = skin.d;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = "Download Skin";
+
+        div.appendChild(img);
+        div.appendChild(document.createElement("br"));
+        div.appendChild(link);
+
+        container.appendChild(div);
+      });
+    } catch (e) {
+      container.innerHTML = "<p>データの読み込みに失敗しました。</p>";
+      console.error(e);
+    }
+  }
+
+  document.getElementById("postForm").addEventListener("submit", async e => {
+    e.preventDefault();
+
+    const c = document.getElementById("inputC").value.trim();
+    const d = document.getElementById("inputD").value.trim();
+
+    if (!c || !d) {
+      alert("両方のURLを入力してください。");
+      return;
+    }
+
+    try {
+      const res = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ c, d })
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        alert("投稿に成功しました！");
+        loadSkins();
+        e.target.reset();
+      } else {
+        alert("投稿に失敗しました。");
+        console.error(result);
+      }
+    } catch (err) {
+      alert("投稿時にエラーが発生しました。");
+      console.error(err);
+    }
+  });
+
+  loadSkins();
+</script>
+
+</body>
+</html>
+
