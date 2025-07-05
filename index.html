@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>Skin配布サイト</title>
+  <style>
+    body { font-family: sans-serif; max-width: 700px; margin: auto; padding: 1rem; }
+    form { margin-bottom: 2rem; }
+    label { display: block; margin-top: 1rem; }
+    input[type="text"], input[type="url"] {
+      width: 100%; padding: 0.5rem; font-size: 1rem;
+    }
+    button { margin-top: 1rem; padding: 0.5rem 1rem; font-size: 1rem; }
+    .skin-item { margin-bottom: 1rem; border-bottom: 1px solid #ccc; padding-bottom: 1rem; }
+    img { max-width: 120px; max-height: 120px; vertical-align: middle; }
+    .skin-info { display: inline-block; margin-left: 1rem; vertical-align: middle; }
+    a.download-link { margin-left: 1rem; color: blue; text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<h1>Skin投稿フォーム</h1>
+
+<form id="skinForm">
+  <label>
+    投稿者名（任意）
+    <input type="text" id="user" placeholder="匿名でもOK" />
+  </label>
+  <label>
+    表示用画像URL（Google Driveなど）
+    <input type="url" id="displayUrl" placeholder="例: https://drive.google.com/..." required />
+  </label>
+  <label>
+    ダウンロード用URL（dl=1など）
+    <input type="url" id="downloadUrl" placeholder="例: https://drive.google.com/...?dl=1" required />
+  </label>
+  <button type="submit">投稿する</button>
+</form>
+
+<h2>投稿されたスキン一覧</h2>
+<div id="skinList">
+  読み込み中...
+</div>
+
+<script>
+  const apiUrl = "https://script.google.com/macros/s/AKfycbwwLJu-WbQoFOhmiYHr07dXfe-V6FVr9SB6lopYeeEIMaIE9y1Z0nDoPiIs3dXo8RhZ/exec";
+
+  const form = document.getElementById('skinForm');
+  const skinList = document.getElementById('skinList');
+
+  // 投稿処理
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+
+    const user = document.getElementById('user').value.trim() || "匿名";
+    const displayUrl = document.getElementById('displayUrl').value.trim();
+    const downloadUrl = document.getElementById('downloadUrl').value.trim();
+
+    if (!displayUrl || !downloadUrl) {
+      alert("両方のURLを入力してください");
+      return;
+    }
+
+    try {
+      const res = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user, displayUrl, downloadUrl })
+      });
+      const result = await res.json();
+      if (result.result === "success") {
+        alert("投稿完了！");
+        form.reset();
+        loadSkins();
+      } else {
+        alert("投稿に失敗: " + (result.error || "不明なエラー"));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("通信エラー: " + err.message);
+    }
+  });
+
+  // 一覧読み込み
+  async function loadSkins() {
+    try {
+      const res = await fetch(apiUrl);
+      const data = await res.json();
+
+      if (!Array.isArray(data)) {
+        skinList.textContent = "取得失敗";
+        return;
+      }
+
+      skinList.innerHTML = "";
+      data.forEach(item => {
+        const div = document.createElement('div');
+        div.className = "skin-item";
+
+        const img = document.createElement('img');
+        img.src = item.displayUrl;
+        img.alt = "Skin";
+        div.appendChild(img);
+
+        const info = document.createElement('div');
+        info.className = "skin-info";
+        info.innerHTML = `
+          投稿者: ${item.user}<br />
+          投稿日: ${new Date(item.timestamp).toLocaleString()}
+        `;
+        div.appendChild(info);
+
+        const link = document.createElement('a');
+        link.href = item.downloadUrl;
+        link.className = "download-link";
+        link.textContent = "[ダウンロード]";
+        link.target = "_blank";
+        div.appendChild(link);
+
+        skinList.appendChild(div);
+      });
+    } catch (err) {
+      skinList.textContent = "読み込み失敗";
+      console.error(err);
+    }
+  }
+
+  // 初回読み込み
+  loadSkins();
+</script>
+
+</body>
+</html>
